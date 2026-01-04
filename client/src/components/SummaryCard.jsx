@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { DollarSign, TrendingUp, TrendingDown } from 'lucide-react';
+import { DollarSign, TrendingUp, TrendingDown, IndianRupee } from 'lucide-react';
 
 const SummaryCard = ({ title, amount, icon, type }) => {
   const { t } = useTranslation();
@@ -23,7 +23,7 @@ const SummaryCard = ({ title, amount, icon, type }) => {
   };
 
   const renderIcon = () => {
-      if (type === 'balance') return <DollarSign className={getColor()} size={24} />;
+      if (type === 'balance') return <IndianRupee className={getColor()} size={24} />;
       if (type === 'income') return <TrendingUp className={getColor()} size={24} />;
       if (type === 'expense') return <TrendingDown className={getColor()} size={24} />;
       return null;
@@ -34,9 +34,12 @@ const SummaryCard = ({ title, amount, icon, type }) => {
       <div className="flex items-center justify-between">
         <div>
           <p className="text-slate-400 text-sm font-medium uppercase tracking-wider">{t(title)}</p>
-          <h3 className={`text-2xl font-bold mt-1 ${getColor()}`}>
-            ${amount.toFixed(2)}
-          </h3>
+          <div className="flex items-center mt-1">
+             <IndianRupee className={getColor()} size={20} />
+             <h3 className={`text-2xl font-bold ${getColor()}`}>
+                {amount.toFixed(2)}
+            </h3>
+          </div>
         </div>
         <div className={`p-3 rounded-lg ${getBgColor()}`}>
             {renderIcon()}

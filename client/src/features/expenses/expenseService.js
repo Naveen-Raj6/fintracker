@@ -28,6 +28,19 @@ const createExpense = async (expenseData, token) => {
     return response.data;
 };
 
+// Update expense
+const updateExpense = async (expenseData, token) => {
+    const config = {
+        headers: {
+            Authorization: `Bearer ${token}`,
+        },
+    };
+
+    const response = await axios.put(API_URL + expenseData.id, expenseData, config);
+
+    return response.data;
+};
+
 // Delete expense
 const deleteExpense = async (expenseId, token) => {
     const config = {
@@ -44,6 +57,7 @@ const deleteExpense = async (expenseId, token) => {
 const expenseService = {
     getExpenses,
     createExpense,
+    updateExpense,
     deleteExpense,
 };
 

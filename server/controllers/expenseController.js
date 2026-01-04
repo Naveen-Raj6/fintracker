@@ -60,9 +60,21 @@ const updateExpense = async (req, res) => {
             return res.status(401).json({ message: 'User not authorized' });
         }
 
+        // Restrict updates to allowed fields (prevent date update)
+        const { title, amount, category, description } = req.body;
+
+        // Add updatedAt timestamp
+        const updateData = {
+            title,
+            amount,
+            category,
+            description,
+            updatedAt: Date.now()
+        };
+
         const updatedExpense = await Expense.findByIdAndUpdate(
             req.params.id,
-            req.body,
+            updateData,
             { new: true }
         );
 

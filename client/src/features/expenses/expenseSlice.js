@@ -47,6 +47,26 @@ export const getExpenses = createAsyncThunk(
     }
 );
 
+// Update expense
+export const updateExpense = createAsyncThunk(
+    'expenses/update',
+    async (expenseData, thunkAPI) => {
+        try {
+            const token = thunkAPI.getState().auth.user.token;
+            // We need to add updateExpense to service
+            return await expenseService.updateExpense(expenseData, token);
+        } catch (error) {
+            const message =
+                (error.response &&
+                    error.response.data &&
+                    error.response.data.message) ||
+                error.message ||
+                error.toString();
+            return thunkAPI.rejectWithValue(message);
+        }
+    }
+);
+
 // Delete expense
 export const deleteExpense = createAsyncThunk(
     'expenses/delete',
@@ -71,7 +91,10 @@ export const expenseSlice = createSlice({
     initialState,
     reducers: {
         reset: (state) => {
-            initialState;
+            state.isError = false;
+            state.isSuccess = false;
+            state.isLoading = false;
+            state.message = '';
         },
     },
     extraReducers: (builder) => {
@@ -98,6 +121,21 @@ export const expenseSlice = createSlice({
                 state.expenses = action.payload;
             })
             .addCase(getExpenses.rejected, (state, action) => {
+                state.isLoading = false;
+                state.isError = true;
+                state.message = action.payload;
+            })
+            .addCase(updateExpense.pending, (state) => {
+                state.isLoading = true;
+            })
+            .addCase(updateExpense.fulfilled, (state, action) => {
+                state.isLoading = false;
+                state.isSuccess = true;
+                state.expenses = state.expenses.map((expense) =>
+                    expense._id === action.payload._id ? action.payload : expense
+                );
+            })
+            .addCase(updateExpense.rejected, (state, action) => {
                 state.isLoading = false;
                 state.isError = true;
                 state.message = action.payload;
