@@ -17,7 +17,7 @@ const getExpenses = async (req, res) => {
 // @route   POST /api/expenses
 // @access  Private
 const addExpense = async (req, res) => {
-    const { title, amount, category, date, description } = req.body;
+    const { title, amount, category, date, description, type } = req.body;
 
     try {
         if (!title || !amount || !category) {
@@ -30,7 +30,8 @@ const addExpense = async (req, res) => {
             amount,
             category,
             date: date || Date.now(),
-            description
+            description,
+            type: type || 'expense'
         });
 
         res.status(201).json(expense);
@@ -61,7 +62,7 @@ const updateExpense = async (req, res) => {
         }
 
         // Restrict updates to allowed fields (prevent date update)
-        const { title, amount, category, description } = req.body;
+        const { title, amount, category, description, type } = req.body;
 
         // Add updatedAt timestamp
         const updateData = {
@@ -69,6 +70,7 @@ const updateExpense = async (req, res) => {
             amount,
             category,
             description,
+            type,
             updatedAt: Date.now()
         };
 

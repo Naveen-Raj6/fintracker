@@ -15,10 +15,19 @@ const ExpenseSchema = new mongoose.Schema({
         type: Number,
         required: [true, 'Please add an amount']
     },
+    type: {
+        type: String,
+        default: 'expense',
+        enum: ['expense', 'income']
+    },
     category: {
         type: String,
         required: [true, 'Please select a category'],
-        enum: ['Food', 'Housing', 'Transportation', 'Utilities', 'Entertainment', 'Healthcare', 'Personal', 'Investment', 'Loan/EMI', 'Other']
+        enum: [
+            'Food', 'Housing', 'Transportation', 'Utilities', 'Entertainment',
+            'Healthcare', 'Personal', 'Investment', 'Loan/EMI', 'Other',
+            'Salary', 'SIP', 'Mutual Fund', 'Gold/Silver', 'Business'
+        ]
     },
     date: {
         type: Date,

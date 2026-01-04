@@ -13,9 +13,10 @@ const EditExpenseModal = ({ expense, onClose }) => {
     amount: expense.amount,
     category: expense.category,
     description: expense.description || '',
+    type: expense.type || 'expense' // Add type
   });
 
-  const { title, amount, category, description } = formData;
+  const { title, amount, category, description, type } = formData;
 
   const onChange = (e) => {
     setFormData((prevState) => ({
@@ -31,7 +32,8 @@ const EditExpenseModal = ({ expense, onClose }) => {
       title,
       amount: Number(amount),
       category,
-      description
+      description,
+      type
     };
     // Dispatch update action
     dispatch(updateExpense(expenseData));
@@ -40,10 +42,9 @@ const EditExpenseModal = ({ expense, onClose }) => {
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      {/* ... keeping wrapper structure ... */}
       <div className="bg-slate-800 rounded-xl shadow-2xl w-full max-w-md border border-slate-700">
         <div className="flex justify-between items-center p-6 border-b border-slate-700">
-          <h2 className="text-xl font-bold text-white">{t('Edit Expense')}</h2>
+          <h2 className="text-xl font-bold text-white">{t('Edit Transaction')}</h2>
           <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
             <X size={24} />
           </button>
@@ -51,13 +52,10 @@ const EditExpenseModal = ({ expense, onClose }) => {
         
         <form onSubmit={onSubmit} className="p-6 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-400 mb-1">{t('Description')}</label>
+            <label className="block text-sm font-medium text-slate-400 mb-1">{t('Title')}</label>
             <input 
               type="text" 
-              name="title" // Assuming description in UI maps to title field in DB as per user request (User asked for "edit... descriptions and category") - In our code title is the main desc. 
-              // Wait, the user said "edit description". In my model I have `title` AND `description`.
-              // In the form line 58 of original file, it was mapping to `title`.
-              // I will keep `title` as the main short description/name.
+              name="title"
               value={title} 
               onChange={onChange}
               className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-accent focus:border-transparent outline-none"
@@ -83,12 +81,13 @@ const EditExpenseModal = ({ expense, onClose }) => {
                     value={category} 
                     onChange={onChange} 
                     name="category"
+                    type={type}
                 />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-400 mb-1">{t('Description')}</label>
+            <label className="block text-sm font-medium text-slate-400 mb-1">{t('Notes')}</label>
             <textarea
               name="description"
               value={description}

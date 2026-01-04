@@ -19,7 +19,8 @@ import { CSVLink } from 'react-csv';
 import { 
     Utensils, Home, Car, Zap, Clapperboard, 
     Stethoscope, User, HelpCircle, 
-    TrendingUp, Landmark // New icons
+    TrendingUp, Landmark, // New icons
+    Wallet, Banknote, Gem, Briefcase // Income icons
 } from 'lucide-react'; // Import icons
 
 // ... (keep includes)
@@ -33,227 +34,79 @@ const Dashboard = () => {
     (state) => state.expenses
   );
 
+  // --- STATE DECLARATIONS ---
   const [formData, setFormData] = useState({
     title: '',
     amount: '',
     category: 'Food',
-    date: new Date().toISOString().split('T')[0]
+    date: new Date().toISOString().split('T')[0],
+    type: 'expense'
   });
   const [showBudgetAlert, setShowBudgetAlert] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
-  const [timeRange, setTimeRange] = useState('3m'); // 1m, 3m, 6m
+  const [timeRange, setTimeRange] = useState('3m'); 
   
-  // Transaction Filter & Pagination States
-  const [filterType, setFilterType] = useState('all'); // 'all', 'month', 'date'
+  // Filter & Pagination States
+  const [filterType, setFilterType] = useState('all'); 
+  const [filterTxType, setFilterTxType] = useState('all'); 
   const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
+  const [filterCategory, setFilterCategory] = useState('all'); 
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const itemsPerPage = 10;
 
-  const { title, amount, category, date } = formData;
+  const { title, amount, category, date, type } = formData;
 
-  const MONTHLY_BUDGET = user?.monthlyBudget || 200000; // Updated budget mock for INR
-
+  // --- CONSTANTS ---
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF19A3', '#19FF5A', '#FF4D4D', '#4D4DFF', '#FFA319'];
 
-    const CATEGORY_ICONS = {
-        'Food': <Utensils size={18} />,
-        'Housing': <Home size={18} />,
-        'Transportation': <Car size={18} />,
-        'Utilities': <Zap size={18} />,
-        'Entertainment': <Clapperboard size={18} />,
-        'Healthcare': <Stethoscope size={18} />,
-        'Personal': <User size={18} />,
-        'Investment': <TrendingUp size={18} />, // New
-        'Loan/EMI': <Landmark size={18} />, // New
-        'Other': <HelpCircle size={18} />,
+  const CATEGORY_ICONS = {
+      'Food': <Utensils size={18} />,
+      'Housing': <Home size={18} />,
+      'Transportation': <Car size={18} />,
+      'Utilities': <Zap size={18} />,
+      'Entertainment': <Clapperboard size={18} />,
+      'Healthcare': <Stethoscope size={18} />,
+      'Personal': <User size={18} />,
+      'Investment': <TrendingUp size={18} />,
+      'Loan/EMI': <Landmark size={18} />,
+      'Other': <HelpCircle size={18} />,
   };
 
-  useEffect(() => {
-    if (isError) {
-      console.log(message);
-    }
-
-    if (!user) {
-      navigate('/login');
-    }
-
-    dispatch(getExpenses());
-
-    return () => {
-      dispatch(reset());
-    };
-  }, [user, navigate, isError, message, dispatch]);
-
-  const onChange = (e) => {
-    setFormData((prevState) => ({
-      ...prevState,
-      [e.target.name]: e.target.value,
-    }));
+  const INCOME_ICONS = {
+      'Salary': <Wallet size={18} />,
+      'SIP': <TrendingUp size={18} />,
+      'Mutual Fund': <Banknote size={18} />,
+      'Gold/Silver': <Gem size={18} />,
+      'Business': <Briefcase size={18} />,
+      'Other': <HelpCircle size={18} />,
   };
 
-  const onSubmit = (e) => {
-    e.preventDefault();
-    dispatch(createExpense({ title, amount: Number(amount), category, date }));
-    setFormData({ title: '', amount: '', category: 'Food', date: new Date().toISOString().split('T')[0] });
-  };
+  // --- CALCULATIONS ---
+  const totalExpenses = expenses
+      .filter(item => item.type === 'expense' || !item.type)
+      .reduce((acc, item) => acc + item.amount, 0);
 
-  // Calculations
-  const totalExpenses = expenses.reduce((acc, item) => acc + item.amount, 0);
-  const income = 150000; // Mock income in INR
-  const balance = income - totalExpenses;
+  const totalIncome = expenses
+      .filter(item => item.type === 'income')
+      .reduce((acc, item) => acc + item.amount, 0);
 
-  // Pie Chart Data
-  const expensesByCategory = expenses.reduce((acc, item) => {
-    acc[item.category] = (acc[item.category] || 0) + item.amount;
-    return acc;
-  }, {});
+  const balance = totalIncome - totalExpenses;
+  const budgetLimit = totalIncome > 0 ? totalIncome : (user?.monthlyBudget || 200000);
 
-  const pieData = Object.keys(expensesByCategory).map((key) => ({
-    name: key,
-    value: expensesByCategory[key],
-  }));
-
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-
-  // Daily Expense Trend (Line Graph) - Last 30 Days
-  const getDailyTrendData = () => {
-    const today = new Date();
-    const last30Days = new Date(today.setDate(today.getDate() - 30));
-    
-    // Create map of last 30 days initialized to 0
-    const dayMap = {};
-    for (let i = 0; i <= 30; i++) {
-        const d = new Date(last30Days);
-        d.setDate(last30Days.getDate() + i);
-        dayMap[d.toLocaleDateString()] = 0;
-    }
-
-    expenses.forEach(expense => {
-        const expDate = new Date(expense.date);
-        if (expDate >= last30Days) {
-            const dateStr = expDate.toLocaleDateString();
-            if (dayMap[dateStr] !== undefined) {
-                dayMap[dateStr] += expense.amount;
-            }
-        }
-    });
-
-    return Object.keys(dayMap).map(date => ({
-        date,
-        amount: dayMap[date]
-    }));
-  };
-
-  const dailyTrendData = getDailyTrendData();
-
-  // Daily Category Breakdown (for selectedDate)
-  const getDailyCategoryData = () => {
-    const targetDate = new Date(selectedDate).toLocaleDateString();
-    const filtered = expenses.filter(e => new Date(e.date).toLocaleDateString() === targetDate);
-    
-    const catMap = filtered.reduce((acc, curr) => {
-        acc[curr.category] = (acc[curr.category] || 0) + curr.amount;
-        return acc;
-    }, {});
-
-    return Object.keys(catMap).map(key => ({
-        name: key,
-        value: catMap[key]
-    }));
-  };
-
-  const dailyCategoryData = getDailyCategoryData();
-
-  const getFilteredData = () => {
-      // ... (existing monthly logic refactored to just Line chart)
-      const now = new Date();
-      let startDate = new Date();
-      
-      if (timeRange === '1m') {
-          startDate.setMonth(now.getMonth() - 1);
-      } else if (timeRange === '3m') {
-          startDate.setMonth(now.getMonth() - 3);
-      } else if (timeRange === '6m') {
-          startDate.setMonth(now.getMonth() - 6);
-      }
-
-      const filteredExpenses = expenses.filter(exp => new Date(exp.date) >= startDate);
-      
-      const grouped = filteredExpenses.reduce((acc, curr) => {
-          const date = new Date(curr.date).toLocaleDateString();
-          if (!acc[date]) acc[date] = 0;
-          acc[date] += curr.amount;
-          return acc;
-      }, {});
-
-      return Object.keys(grouped).map(date => ({
-          date,
-          amount: grouped[date],
-          // Add dummy high/low for Line chart "area" effect if desired, or just use simple line
-          low: grouped[date] * 0.9,
-          high: grouped[date] * 1.1
-      }));
-  };
-  
-  const chartData = getFilteredData();
-
-
-  // Budget Alert Logic
-  useEffect(() => {
-      if (totalExpenses > MONTHLY_BUDGET * 0.8) {
-          setShowBudgetAlert(true);
-      } else {
-          setShowBudgetAlert(false);
-      }
-  }, [totalExpenses, MONTHLY_BUDGET]);
-
-  // PDF Export with AutoTable
-  const exportPDF = () => {
-      const doc = new jsPDF();
-      
-      doc.setFontSize(18);
-      doc.text("Expense Tracker Report", 14, 22);
-      
-      doc.setFontSize(11);
-      doc.setTextColor(100);
-      doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 30);
-      
-      const tableColumn = ["Date", "Description", "Category", "Amount (INR)"];
-      const tableRows = [];
-
-      expenses.forEach(expense => {
-          const expenseData = [
-              new Date(expense.date).toLocaleDateString(),
-              expense.title,
-              expense.category,
-              expense.amount.toFixed(2)
-          ];
-          tableRows.push(expenseData);
-      });
-
-      autoTable(doc, { 
-          head: [tableColumn],
-          body: tableRows,
-          startY: 40 
-      });
-      doc.save("expenses_report.pdf");
-  };
-
-  // Budget Health Data (Radial Bar)
-  const budgetHealthData = [{
-    name: 'Budget Used',
-    value: Math.min((totalExpenses / MONTHLY_BUDGET) * 100, 100),
-    fill: totalExpenses > MONTHLY_BUDGET ? '#ef4444' : '#10b981'
-  }];
-
-  // Filtered & Paginated Transactions
+  // --- LOGIC: FILTERED TRANSACTIONS ---
   const getFilteredTransactions = () => {
       let filtered = [...expenses];
 
-      // 1. Sort by Date (Newest First) - Default
+      // 1. Sort by Date (Newest First)
       filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-      // 2. Apply Filters
+      // 2. Filter by Transaction Type
+      if (filterTxType !== 'all') {
+          filtered = filtered.filter(exp => (exp.type || 'expense') === filterTxType);
+      }
+
+      // 3. Time Filters
       if (filterType === 'month') {
           const currentMonth = new Date().getMonth();
           const currentYear = new Date().getFullYear();
@@ -265,17 +118,162 @@ const Dashboard = () => {
           filtered = filtered.filter(exp => new Date(exp.date).toISOString().split('T')[0] === filterDate);
       }
 
+      // 4. Category Filter
+      if (filterCategory !== 'all') {
+          filtered = filtered.filter(exp => exp.category === filterCategory);
+      }
+
       return filtered;
   };
 
+  // --- CHART DATA PREPARATION ---
+  const expenseTransactions = expenses.filter(e => e.type === 'expense' || !e.type);
+
+  // Daily Expense Trend
+  const getDailyTrendData = () => {
+      const today = new Date();
+      const last30Days = new Date(today.setDate(today.getDate() - 30));
+      const dayMap = {};
+      for (let i = 0; i <= 30; i++) {
+          const d = new Date(last30Days);
+          d.setDate(last30Days.getDate() + i);
+          dayMap[d.toLocaleDateString()] = 0;
+      }
+      expenseTransactions.forEach(expense => {
+          const expDate = new Date(expense.date);
+          if (expDate >= last30Days) {
+              const dateStr = expDate.toLocaleDateString();
+              if (dayMap[dateStr] !== undefined) { 
+                  dayMap[dateStr] += expense.amount; 
+              }
+          }
+      });
+      return Object.keys(dayMap).map(date => ({ date, amount: dayMap[date] }));
+  };
+  const dailyTrendData = getDailyTrendData();
+
+  // Daily Category Breakdown
+  const getDailyCategoryData = () => {
+      const targetDate = new Date(selectedDate).toLocaleDateString();
+      const filtered = expenseTransactions.filter(e => new Date(e.date).toLocaleDateString() === targetDate);
+      const catMap = filtered.reduce((acc, curr) => {
+          acc[curr.category] = (acc[curr.category] || 0) + curr.amount;
+          return acc;
+      }, {});
+      return Object.keys(catMap).map(key => ({ name: key, value: catMap[key] }));
+  };
+  const dailyCategoryData = getDailyCategoryData();
+
+  // Expense Trends (Line Chart)
+  const getFilteredData = () => {
+     const now = new Date();
+     let startDate = new Date();
+     if (timeRange === '1m') startDate.setMonth(now.getMonth() - 1);
+     else if (timeRange === '3m') startDate.setMonth(now.getMonth() - 3);
+     else if (timeRange === '6m') startDate.setMonth(now.getMonth() - 6);
+
+     const filteredExpenses = expenseTransactions.filter(exp => new Date(exp.date) >= startDate);
+     const grouped = filteredExpenses.reduce((acc, curr) => {
+         const date = new Date(curr.date).toLocaleDateString();
+         if (!acc[date]) acc[date] = 0;
+         acc[date] += curr.amount;
+         return acc;
+     }, {});
+
+     return Object.keys(grouped).map(date => ({
+         date,
+         amount: grouped[date],
+         low: grouped[date] * 0.9,
+         high: grouped[date] * 1.1
+     }));
+  };
+  const chartData = getFilteredData();
+
+  // Budget Health Data
+  const budgetHealthData = [{
+    name: 'Budget Used',
+    value: Math.min((totalExpenses / budgetLimit) * 100, 100),
+    fill: totalExpenses > budgetLimit ? '#ef4444' : '#10b981'
+  }];
+
+  // --- INSIGHTS CALCULATIONS ---
+  const currentDate = new Date();
+  const currentMonth = currentDate.getMonth();
+  const currentYear = currentDate.getFullYear();
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  const daysPassed = currentDate.getDate();
+
+  // 1. This Month Spend
+  const thisMonthExpenses = expenseTransactions.filter(e => {
+      const d = new Date(e.date);
+      return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+  });
+  const thisMonthSpend = thisMonthExpenses.reduce((acc, curr) => acc + curr.amount, 0);
+
+  // 2. Last 7 Days Spend
+  const last7DaysDate = new Date();
+  last7DaysDate.setDate(currentDate.getDate() - 7);
+  const last7DaysSpend = expenseTransactions
+      .filter(e => new Date(e.date) >= last7DaysDate)
+      .reduce((acc, curr) => acc + curr.amount, 0);
+
+  // 3. Daily Average (based on days passed in current month)
+  const dailyAverage = daysPassed > 0 ? thisMonthSpend / daysPassed : 0;
+
+  // 4. Projected Monthly Spend
+  const projectedSpend = dailyAverage * daysInMonth;
+
+  // --- EFFECTS & HANDLERS ---
+  useEffect(() => {
+    if (isError) console.log(message);
+    if (!user) navigate('/login');
+    dispatch(getExpenses());
+    return () => { dispatch(reset()); };
+  }, [user, navigate, isError, message, dispatch]);
+
+  const onChange = (e) => {
+    setFormData((prevState) => ({ ...prevState, [e.target.name]: e.target.value }));
+  };
+
+  const onSubmit = (e) => {
+    e.preventDefault();
+    dispatch(createExpense({ title, amount: Number(amount), category, date, type }));
+    setFormData({ 
+        title: '', 
+        amount: '', 
+        category: type === 'expense' ? 'Food' : 'Salary', 
+        date: new Date().toISOString().split('T')[0],
+        type 
+    });
+  };
+
+  const exportPDF = () => {
+      const doc = new jsPDF();
+      doc.setFontSize(18);
+      doc.text("Expense Tracker Report", 14, 22);
+      doc.setFontSize(11);
+      doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 30);
+      const tableColumn = ["Date", "Description", "Category", "Amount (INR)"];
+      const tableRows = [];
+      filteredTransactions.forEach(expense => {
+          tableRows.push([
+              new Date(expense.date).toLocaleDateString(),
+              expense.title,
+              expense.category,
+              expense.amount.toFixed(2)
+          ]);
+      });
+      autoTable(doc, { head: [tableColumn], body: tableRows, startY: 40 });
+      doc.save("expenses_report.pdf");
+  };
+
+  // --- PAGINATION / EXPORT PREP ---
   const filteredTransactions = getFilteredTransactions();
   const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
   const paginatedTransactions = filteredTransactions.slice(
       (currentPage - 1) * itemsPerPage,
       currentPage * itemsPerPage
   );
-
-  // CSV Data (use filtered data for export)
   const csvData = filteredTransactions.map(exp => ({
       Date: new Date(exp.date).toLocaleDateString(),
       Title: exp.title,
@@ -302,8 +300,8 @@ const Dashboard = () => {
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <SummaryCard title="Total Balance" amount={balance} type="balance" />
-          <SummaryCard title="Income" amount={income} type="income" />
-          <SummaryCard title="Expenses" amount={totalExpenses} type="expense" />
+          <SummaryCard title="Income" amount={totalIncome} type="income" />
+          <SummaryCard title="Make Expense" amount={totalExpenses} type="expense" />
         </div>
 
         {/* Charts Section */}
@@ -363,15 +361,16 @@ const Dashboard = () => {
                 </div>
             </div>
 
-             {/* Budget Health (vs Global Category) */}
-             <div className="bg-slate-800 p-6 rounded-xl shadow-lg border border-slate-700/50 lg:col-span-1 flex flex-col items-center justify-center">
-                <h3 className="text-lg font-bold text-white mb-2 self-start w-full">{t('Budget Health')}</h3>
-                <div className="h-64 w-full relative">
+             {/* Budget Health (Insights Enhanced) */}
+             <div className="bg-slate-800 p-6 rounded-xl shadow-lg border border-slate-700/50 lg:col-span-1 flex flex-col items-center">
+                <h3 className="text-lg font-bold text-white mb-2 self-start w-full">{t('Budget Health & Insights')}</h3>
+                
+                <div className="h-40 w-full relative mb-4">
                     <ResponsiveContainer width="100%" height="100%">
                         <RadialBarChart 
                             innerRadius="80%" 
                             outerRadius="100%" 
-                            barSize={20} 
+                            barSize={15} 
                             data={budgetHealthData} 
                             startAngle={180} 
                             endAngle={0}
@@ -389,14 +388,30 @@ const Dashboard = () => {
                             />
                         </RadialBarChart>
                     </ResponsiveContainer>
-                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center mt-4">
-                        <p className="text-3xl font-bold text-white">{Math.round((totalExpenses / MONTHLY_BUDGET) * 100)}%</p>
-                        <p className="text-xs text-slate-400">of Monthly Budget</p>
+                    <div className="absolute top-2/3 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center mt-[-10px]">
+                        <p className="text-2xl font-bold text-white">{Math.round((totalExpenses / budgetLimit) * 100)}%</p>
+                        <p className="text-[10px] text-slate-400">of Income Used</p>
                     </div>
                 </div>
-                <div className="text-center mt-[-20px]">
-                    <p className="text-sm text-slate-400">Spent: ₹{totalExpenses.toLocaleString()}</p>
-                    <p className="text-xs text-slate-500">Limit: ₹{MONTHLY_BUDGET.toLocaleString()}</p>
+
+                {/* Insights Grid */}
+                <div className="grid grid-cols-2 gap-3 w-full">
+                    <div className="bg-slate-700/30 p-2 rounded-lg text-center border border-slate-700">
+                        <p className="text-[10px] text-slate-400 uppercase tracking-wider">Daily Avg</p>
+                        <p className="text-sm font-bold text-emerald-400">₹{dailyAverage.toFixed(0)}</p>
+                    </div>
+                     <div className="bg-slate-700/30 p-2 rounded-lg text-center border border-slate-700">
+                        <p className="text-[10px] text-slate-400 uppercase tracking-wider">Last 7 Days</p>
+                        <p className="text-sm font-bold text-blue-400">₹{last7DaysSpend.toLocaleString()}</p>
+                    </div>
+                    <div className="bg-slate-700/30 p-2 rounded-lg text-center border border-slate-700">
+                        <p className="text-[10px] text-slate-400 uppercase tracking-wider">This Month</p>
+                        <p className="text-sm font-bold text-purple-400">₹{thisMonthSpend.toLocaleString()}</p>
+                    </div>
+                     <div className="bg-slate-700/30 p-2 rounded-lg text-center border border-slate-700">
+                        <p className="text-[10px] text-slate-400 uppercase tracking-wider">Projected</p>
+                        <p className="text-sm font-bold text-orange-400">₹{projectedSpend.toFixed(0)}</p>
+                    </div>
                 </div>
             </div>
 
@@ -434,9 +449,36 @@ const Dashboard = () => {
                 </div>
             </div>
 
-        {/* Add Expense Form */}
+        {/* Add Transaction Form */}
         <div className="bg-slate-800 p-6 rounded-xl shadow-lg border border-slate-700/50 mb-8">
-            <h3 className="text-lg font-bold text-white mb-4">{t('Add Expense')}</h3>
+            <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-bold text-white">{t('Add Transaction')}</h3>
+                
+                {/* Type Toggle */}
+                <div className="flex bg-slate-700 rounded-lg p-1">
+                    <button
+                        onClick={() => setFormData(prev => ({ ...prev, type: 'expense', category: 'Food' }))}
+                        className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+                            type === 'expense' 
+                            ? 'bg-red-500 text-white shadow-sm' 
+                            : 'text-slate-300 hover:text-white'
+                        }`}
+                    >
+                        Expense
+                    </button>
+                    <button
+                        onClick={() => setFormData(prev => ({ ...prev, type: 'income', category: 'Salary' }))}
+                        className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+                            type === 'income' 
+                            ? 'bg-emerald-500 text-white shadow-sm' 
+                            : 'text-slate-300 hover:text-white'
+                        }`}
+                    >
+                        Income
+                    </button>
+                </div>
+            </div>
+
             <form onSubmit={onSubmit} className="grid grid-cols-1 md:grid-cols-5 gap-4">
                 <div className="md:col-span-1">
                     <input 
@@ -465,6 +507,7 @@ const Dashboard = () => {
                         value={category} 
                         onChange={onChange} 
                         name="category"
+                        type={type} // Pass type to select correct icons
                     />
                 </div>
                 <div className="md:col-span-1">
@@ -480,9 +523,14 @@ const Dashboard = () => {
                     />
                 </div>
                 <div className="md:col-span-1">
-                    <button type="submit" className="w-full h-full bg-accent hover:bg-sky-500 text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2">
+                    <button 
+                        type="submit" 
+                        className={`w-full h-full font-bold py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 text-white ${
+                            type === 'income' ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-red-500 hover:bg-red-600'
+                        }`}
+                    >
                         <Plus size={20} />
-                        {t('Add Expense')}
+                        {type === 'income' ? 'Add Income' : 'Add Expense'}
                     </button>
                 </div>
             </form>
@@ -495,6 +543,17 @@ const Dashboard = () => {
                 
                 {/* Filters */}
                 <div className="flex flex-wrap gap-2 items-center">
+                    {/* TYPE Filter */}
+                    <select 
+                        value={filterTxType} 
+                        onChange={(e) => { setFilterTxType(e.target.value); setCurrentPage(1); }}
+                        className="bg-slate-700 text-white text-sm rounded-lg px-3 py-1 border-none focus:ring-1 focus:ring-accent"
+                    >
+                        <option value="all">All Types</option>
+                        <option value="income">Income</option>
+                        <option value="expense">Expense</option>
+                    </select>
+
                     <select 
                         value={filterType} 
                         onChange={(e) => { setFilterType(e.target.value); setCurrentPage(1); }}
@@ -513,6 +572,21 @@ const Dashboard = () => {
                             className="bg-slate-700 text-white text-sm rounded-lg px-2 py-1 border-none focus:ring-1 focus:ring-accent"
                         />
                     )}
+
+                    {/* Category Filter */}
+                    <select 
+                        value={filterCategory} 
+                        onChange={(e) => { setFilterCategory(e.target.value); setCurrentPage(1); }}
+                        className="bg-slate-700 text-white text-sm rounded-lg px-3 py-1 border-none focus:ring-1 focus:ring-accent"
+                    >
+                        <option value="all">All Categories</option>
+                        {(filterTxType === 'all' || filterTxType === 'expense') && Object.keys(CATEGORY_ICONS).map(cat => (
+                            <option key={cat} value={cat}>{cat}</option>
+                        ))}
+                        {(filterTxType === 'all' || filterTxType === 'income') && Object.keys(INCOME_ICONS).map(cat => (
+                            <option key={cat} value={cat}>{cat}</option>
+                        ))}
+                    </select>
 
                     <div className="flex gap-2 ml-2">
                         <button onClick={exportPDF} className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1 rounded-md text-sm flex items-center gap-1 transition-colors">
@@ -546,12 +620,12 @@ const Dashboard = () => {
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm">
                                     <span className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-slate-700 text-slate-300 border border-slate-600 w-fit">
-                                        {CATEGORY_ICONS[expense.category] || <HelpCircle size={14} />}
+                                        {CATEGORY_ICONS[expense.category] || INCOME_ICONS[expense.category] || <HelpCircle size={14} />}
                                         {expense.category}
                                     </span>
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-white">
-                                    ₹{expense.amount}
+                                <td className={`px-6 py-4 whitespace-nowrap text-sm text-right font-bold ${expense.type === 'income' ? 'text-emerald-500' : 'text-white'}`}>
+                                    {expense.type === 'income' ? '+' : '-'} ₹{expense.amount}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-center flex justify-center gap-2">
                                      <button 
