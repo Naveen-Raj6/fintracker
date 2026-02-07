@@ -4,8 +4,15 @@ import authService from './authService';
 // Get user from localStorage
 const user = JSON.parse(localStorage.getItem('user'));
 
+// Validate user token exists to prevent 'jwt malformed'
+const validatedUser = (user && user.token) ? user : null;
+// Clean up invalid user data from storage if any
+if (user && !user.token) {
+    localStorage.removeItem('user');
+}
+
 const initialState = {
-    user: user ? user : null,
+    user: validatedUser,
     isError: false,
     isSuccess: false,
     isLoading: false,

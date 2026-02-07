@@ -12,7 +12,7 @@ import {
     LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend,
     RadialBarChart, RadialBar, PolarAngleAxis 
 } from 'recharts';
-import { Plus, Trash2, Download, Edit2, Filter } from 'lucide-react';
+import { Plus, Trash2, Download, Edit2, Filter, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { CSVLink } from 'react-csv';
@@ -51,9 +51,12 @@ const Dashboard = () => {
   const [filterTxType, setFilterTxType] = useState('all'); 
   const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
   const [filterCategory, setFilterCategory] = useState('all'); 
+  const [categoryTimeRange, setCategoryTimeRange] = useState('date'); // 'date', 'week', 'month'
+  const [selectedWeek, setSelectedWeek] = useState(1);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const itemsPerPage = 10;
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
 
   const { title, amount, category, date, type } = formData;
 
@@ -94,19 +97,24 @@ const Dashboard = () => {
   const balance = totalIncome - totalExpenses;
   const budgetLimit = totalIncome > 0 ? totalIncome : (user?.monthlyBudget || 200000);
 
+  const requestSort = (key) => {
+      let direction = 'asc';
+      if (sortConfig.key === key && sortConfig.direction === 'asc') {
+          direction = 'desc';
+      }
+      setSortConfig({ key, direction });
+  };
+
   // --- LOGIC: FILTERED TRANSACTIONS ---
   const getFilteredTransactions = () => {
       let filtered = [...expenses];
 
-      // 1. Sort by Date (Newest First)
-      filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-      // 2. Filter by Transaction Type
+      // 1. Filter by Transaction Type
       if (filterTxType !== 'all') {
           filtered = filtered.filter(exp => (exp.type || 'expense') === filterTxType);
       }
 
-      // 3. Time Filters
+      // 2. Time Filters
       if (filterType === 'month') {
           const currentMonth = new Date().getMonth();
           const currentYear = new Date().getFullYear();
@@ -118,10 +126,31 @@ const Dashboard = () => {
           filtered = filtered.filter(exp => new Date(exp.date).toISOString().split('T')[0] === filterDate);
       }
 
-      // 4. Category Filter
+      // 3. Category Filter
       if (filterCategory !== 'all') {
           filtered = filtered.filter(exp => exp.category === filterCategory);
       }
+
+      // 4. Sort by sortConfig
+      filtered.sort((a, b) => {
+          if (sortConfig.key === 'date') {
+              return sortConfig.direction === 'asc' 
+                  ? new Date(a.date) - new Date(b.date)
+                  : new Date(b.date) - new Date(a.date);
+          }
+          if (sortConfig.key === 'amount') {
+              return sortConfig.direction === 'asc' 
+                  ? a.amount - b.amount
+                  : b.amount - a.amount;
+          }
+          if (a[sortConfig.key] < b[sortConfig.key]) {
+              return sortConfig.direction === 'asc' ? -1 : 1;
+          }
+          if (a[sortConfig.key] > b[sortConfig.key]) {
+              return sortConfig.direction === 'asc' ? 1 : -1;
+          }
+          return 0;
+      });
 
       return filtered;
   };
@@ -152,17 +181,51 @@ const Dashboard = () => {
   };
   const dailyTrendData = getDailyTrendData();
 
-  // Daily Category Breakdown
-  const getDailyCategoryData = () => {
-      const targetDate = new Date(selectedDate).toLocaleDateString();
-      const filtered = expenseTransactions.filter(e => new Date(e.date).toLocaleDateString() === targetDate);
+  // Category Breakdown Data
+  const getCategoryBreakdownData = () => {
+      const targetDate = new Date(selectedDate);
+      let filtered = expenseTransactions;
+
+      if (categoryTimeRange === 'date') {
+          const dateStr = targetDate.toLocaleDateString();
+          filtered = expenseTransactions.filter(e => new Date(e.date).toLocaleDateString() === dateStr);
+      } else if (categoryTimeRange === 'week') {
+          const year = targetDate.getFullYear();
+          const month = targetDate.getMonth();
+          
+          let startDay, endDay;
+          if (selectedWeek === 1) { startDay = 1; endDay = 7; }
+          else if (selectedWeek === 2) { startDay = 8; endDay = 14; }
+          else if (selectedWeek === 3) { startDay = 15; endDay = 21; }
+          else if (selectedWeek === 4) { startDay = 22; endDay = 28; }
+          else { 
+            startDay = 29; 
+            endDay = new Date(year, month + 1, 0).getDate(); 
+          }
+
+          const startDate = new Date(year, month, startDay);
+          const endDate = new Date(year, month, endDay, 23, 59, 59);
+
+          filtered = expenseTransactions.filter(e => {
+              const d = new Date(e.date);
+              return d >= startDate && d <= endDate;
+          });
+      } else if (categoryTimeRange === 'month') {
+          const month = targetDate.getMonth();
+          const year = targetDate.getFullYear();
+          filtered = expenseTransactions.filter(e => {
+              const d = new Date(e.date);
+              return d.getMonth() === month && d.getFullYear() === year;
+          });
+      }
+
       const catMap = filtered.reduce((acc, curr) => {
           acc[curr.category] = (acc[curr.category] || 0) + curr.amount;
           return acc;
       }, {});
       return Object.keys(catMap).map(key => ({ name: key, value: catMap[key] }));
   };
-  const dailyCategoryData = getDailyCategoryData();
+  const dailyCategoryData = getCategoryBreakdownData();
 
   // Expense Trends (Line Chart)
   const getFilteredData = () => {
@@ -173,19 +236,27 @@ const Dashboard = () => {
      else if (timeRange === '6m') startDate.setMonth(now.getMonth() - 6);
 
      const filteredExpenses = expenseTransactions.filter(exp => new Date(exp.date) >= startDate);
+     
+     // Group by YYYY-MM-DD for reliable sorting
      const grouped = filteredExpenses.reduce((acc, curr) => {
-         const date = new Date(curr.date).toLocaleDateString();
-         if (!acc[date]) acc[date] = 0;
-         acc[date] += curr.amount;
+         const dateKey = new Date(curr.date).toISOString().split('T')[0];
+         if (!acc[dateKey]) acc[dateKey] = 0;
+         acc[dateKey] += curr.amount;
          return acc;
      }, {});
 
-     return Object.keys(grouped).map(date => ({
-         date,
-         amount: grouped[date],
-         low: grouped[date] * 0.9,
-         high: grouped[date] * 1.1
-     }));
+     // Sort entries by date key
+     return Object.entries(grouped)
+         .sort((a, b) => a[0].localeCompare(b[0]))
+         .map(([dateKey, amount]) => {
+            const d = new Date(dateKey);
+            return {
+                date: d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+                amount,
+                low: amount * 0.9,
+                high: amount * 1.1
+            };
+         });
   };
   const chartData = getFilteredData();
 
@@ -226,8 +297,13 @@ const Dashboard = () => {
   // --- EFFECTS & HANDLERS ---
   useEffect(() => {
     if (isError) console.log(message);
-    if (!user) navigate('/login');
-    dispatch(getExpenses());
+    
+    if (!user) {
+      navigate('/login');
+    } else {
+      dispatch(getExpenses());
+    }
+    
     return () => { dispatch(reset()); };
   }, [user, navigate, isError, message, dispatch]);
 
@@ -322,15 +398,45 @@ const Dashboard = () => {
 
             {/* Daily Category Breakdown with Date Picker */}
             <div className="bg-slate-800 p-6 rounded-xl shadow-lg border border-slate-700/50 lg:col-span-1">
-                <div className="flex justify-between items-center mb-4">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
                      <h3 className="text-lg font-bold text-white">{t('Category Breakdown')}</h3>
+                     <div className="flex bg-slate-700 rounded-lg p-1">
+                        {['date', 'week', 'month'].map((range) => (
+                            <button
+                                key={range}
+                                onClick={() => setCategoryTimeRange(range)}
+                                className={`px-2 py-1 text-[10px] rounded-md font-medium transition-all ${
+                                    categoryTimeRange === range ? 'bg-accent text-white shadow-sm' : 'text-slate-400 hover:text-white'
+                                }`}
+                            >
+                                {range.charAt(0).toUpperCase() + range.slice(1)}
+                            </button>
+                        ))}
+                    </div>
                      <input 
                         type="date" 
                         value={selectedDate}
                         onChange={(e) => setSelectedDate(e.target.value)}
-                        className="bg-slate-700 text-white text-xs rounded px-2 py-1 border-none focus:ring-1 focus:ring-accent"
+                        className="bg-slate-700 text-white text-[10px] rounded px-2 py-1 border-none focus:ring-1 focus:ring-accent"
                      />
                 </div>
+                {categoryTimeRange === 'week' && (
+                    <div className="flex justify-center gap-1 mb-4 bg-slate-700/50 p-1 rounded-lg border border-slate-700">
+                        {[1, 2, 3, 4, 5].map((w) => (
+                            <button
+                                key={w}
+                                onClick={() => setSelectedWeek(w)}
+                                className={`flex-1 py-1 text-[10px] font-bold rounded transition-all ${
+                                    selectedWeek === w 
+                                    ? 'bg-accent text-white shadow-sm' 
+                                    : 'text-slate-400 hover:text-slate-200'
+                                }`}
+                            >
+                                W{w}
+                            </button>
+                        ))}
+                    </div>
+                )}
                 <div className="h-64">
                 {dailyCategoryData.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
@@ -517,7 +623,7 @@ const Dashboard = () => {
                         value={date} 
                         onChange={onChange}
                         max={new Date().toISOString().split('T')[0]}
-                        min={new Date(new Date().setDate(new Date().getDate() - 6)).toISOString().split('T')[0]}
+                        min={new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0]}
                         className="w-full bg-slate-700 border-none rounded-lg px-4 py-2 text-white placeholder-slate-400 focus:ring-2 focus:ring-accent"
                         required
                     />
@@ -602,10 +708,50 @@ const Dashboard = () => {
                 <table className="w-full text-left">
                     <thead className="bg-slate-700/50">
                         <tr>
-                            <th className="px-6 py-3 text-xs font-uppercase tracking-wider text-slate-400">{t('Date')}</th>
-                            <th className="px-6 py-3 text-xs font-uppercase tracking-wider text-slate-400">{t('Description')}</th>
-                            <th className="px-6 py-3 text-xs font-uppercase tracking-wider text-slate-400">{t('Category')}</th>
-                            <th className="px-6 py-3 text-xs font-uppercase tracking-wider text-slate-400 text-right">{t('Amount')}</th>
+                            <th 
+                                className="px-6 py-3 text-xs font-uppercase tracking-wider text-slate-400 cursor-pointer hover:text-white transition-colors"
+                                onClick={() => requestSort('date')}
+                            >
+                                <div className="flex items-center gap-1">
+                                    {t('Date')}
+                                    {sortConfig.key === 'date' ? (
+                                        sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
+                                    ) : <ArrowUpDown size={14} className="opacity-30" />}
+                                </div>
+                            </th>
+                            <th 
+                                className="px-6 py-3 text-xs font-uppercase tracking-wider text-slate-400 cursor-pointer hover:text-white transition-colors"
+                                onClick={() => requestSort('title')}
+                            >
+                                <div className="flex items-center gap-1">
+                                    {t('Description')}
+                                    {sortConfig.key === 'title' ? (
+                                        sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
+                                    ) : <ArrowUpDown size={14} className="opacity-30" />}
+                                </div>
+                            </th>
+                            <th 
+                                className="px-6 py-3 text-xs font-uppercase tracking-wider text-slate-400 cursor-pointer hover:text-white transition-colors"
+                                onClick={() => requestSort('category')}
+                            >
+                                <div className="flex items-center gap-1">
+                                    {t('Category')}
+                                    {sortConfig.key === 'category' ? (
+                                        sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
+                                    ) : <ArrowUpDown size={14} className="opacity-30" />}
+                                </div>
+                            </th>
+                            <th 
+                                className="px-6 py-3 text-xs font-uppercase tracking-wider text-slate-400 text-right cursor-pointer hover:text-white transition-colors"
+                                onClick={() => requestSort('amount')}
+                            >
+                                <div className="flex items-center justify-end gap-1">
+                                    {t('Amount')}
+                                    {sortConfig.key === 'amount' ? (
+                                        sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
+                                    ) : <ArrowUpDown size={14} className="opacity-30" />}
+                                </div>
+                            </th>
                             <th className="px-6 py-3 text-xs font-uppercase tracking-wider text-slate-400 text-center">{t('Actions')}</th>
                         </tr>
                     </thead>
@@ -655,25 +801,43 @@ const Dashboard = () => {
         </div>
         
         {/* Pagination Controls */}
-        {totalPages > 1 && (
-            <div className="flex justify-center items-center gap-4 mt-4 text-white">
-                <button 
-                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                    disabled={currentPage === 1}
-                    className="px-3 py-1 bg-slate-800 rounded-md disabled:opacity-50 hover:bg-slate-700 transition-colors"
-                >
-                    Previous
-                </button>
-                <span className="text-sm text-slate-400">
-                    Page {currentPage} of {totalPages}
-                </span>
-                <button 
-                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                    disabled={currentPage === totalPages}
-                    className="px-3 py-1 bg-slate-800 rounded-md disabled:opacity-50 hover:bg-slate-700 transition-colors"
-                >
-                    Next
-                </button>
+        {totalPages > 0 && (
+            <div className="flex flex-col sm:flex-row justify-center items-center gap-4 mt-6 text-white bg-slate-800 p-4 rounded-xl border border-slate-700/50 shadow-sm">
+                <div className="flex items-center gap-2">
+                    <span className="text-sm text-slate-400">Rows per page:</span>
+                    <select 
+                        value={itemsPerPage}
+                        onChange={(e) => {
+                            setItemsPerPage(Number(e.target.value));
+                            setCurrentPage(1);
+                        }}
+                        className="bg-slate-700 text-white text-sm rounded-lg px-2 py-1 border-none focus:ring-1 focus:ring-accent"
+                    >
+                        {[10, 20, 30, 50, 100].map(val => (
+                            <option key={val} value={val}>{val}</option>
+                        ))}
+                    </select>
+                </div>
+
+                <div className="flex items-center gap-4">
+                    <button 
+                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                        disabled={currentPage === 1}
+                        className="px-4 py-1.5 bg-slate-700 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-600 transition-colors text-sm font-medium"
+                    >
+                        Previous
+                    </button>
+                    <span className="text-sm font-bold bg-slate-700 px-3 py-1 rounded text-accent">
+                        {currentPage} <span className="text-slate-400 font-normal mx-1">/</span> {totalPages}
+                    </span>
+                    <button 
+                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                        disabled={currentPage === totalPages}
+                        className="px-4 py-1.5 bg-slate-700 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-600 transition-colors text-sm font-medium"
+                    >
+                        Next
+                    </button>
+                </div>
             </div>
         )}
       </div>
