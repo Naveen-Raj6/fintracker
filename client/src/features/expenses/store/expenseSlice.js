@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import expenseService from './expenseService';
+import expenseService from '../services/expenseService';
 
 const initialState = {
     expenses: [],
@@ -14,17 +14,9 @@ export const createExpense = createAsyncThunk(
     'expenses/create',
     async (expenseData, thunkAPI) => {
         try {
-            const token = thunkAPI.getState().auth.user?.token;
-            if (!token) return thunkAPI.rejectWithValue('No token found');
-            return await expenseService.createExpense(expenseData, token);
+            return await expenseService.createExpense(expenseData);
         } catch (error) {
-            const message =
-                (error.response &&
-                    error.response.data &&
-                    error.response.data.message) ||
-                error.message ||
-                error.toString();
-            return thunkAPI.rejectWithValue(message);
+            return thunkAPI.rejectWithValue(error);
         }
     }
 );
@@ -34,17 +26,9 @@ export const getExpenses = createAsyncThunk(
     'expenses/getAll',
     async (_, thunkAPI) => {
         try {
-            const token = thunkAPI.getState().auth.user?.token;
-            if (!token) return thunkAPI.rejectWithValue('No token found');
-            return await expenseService.getExpenses(token);
+            return await expenseService.getExpenses();
         } catch (error) {
-            const message =
-                (error.response &&
-                    error.response.data &&
-                    error.response.data.message) ||
-                error.message ||
-                error.toString();
-            return thunkAPI.rejectWithValue(message);
+            return thunkAPI.rejectWithValue(error);
         }
     }
 );
@@ -54,18 +38,9 @@ export const updateExpense = createAsyncThunk(
     'expenses/update',
     async (expenseData, thunkAPI) => {
         try {
-            const token = thunkAPI.getState().auth.user?.token;
-            if (!token) return thunkAPI.rejectWithValue('No token found');
-            // We need to add updateExpense to service
-            return await expenseService.updateExpense(expenseData, token);
+            return await expenseService.updateExpense(expenseData);
         } catch (error) {
-            const message =
-                (error.response &&
-                    error.response.data &&
-                    error.response.data.message) ||
-                error.message ||
-                error.toString();
-            return thunkAPI.rejectWithValue(message);
+            return thunkAPI.rejectWithValue(error);
         }
     }
 );
@@ -75,17 +50,9 @@ export const deleteExpense = createAsyncThunk(
     'expenses/delete',
     async (id, thunkAPI) => {
         try {
-            const token = thunkAPI.getState().auth.user?.token;
-            if (!token) return thunkAPI.rejectWithValue('No token found');
-            return await expenseService.deleteExpense(id, token);
+            return await expenseService.deleteExpense(id);
         } catch (error) {
-            const message =
-                (error.response &&
-                    error.response.data &&
-                    error.response.data.message) ||
-                error.message ||
-                error.toString();
-            return thunkAPI.rejectWithValue(message);
+            return thunkAPI.rejectWithValue(error);
         }
     }
 );

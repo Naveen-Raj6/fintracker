@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate, Link } from 'react-router-dom';
-import { register, reset } from '../features/auth/authSlice';
+import { register, reset } from '../store/authSlice';
 import { useTranslation } from 'react-i18next';
 
 function Register() {

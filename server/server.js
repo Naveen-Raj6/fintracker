@@ -31,9 +31,18 @@ app.get('/', (req, res) => {
 // Import Routes
 const authRoutes = require('./routes/authRoutes');
 const expenseRoutes = require('./routes/expenseRoutes');
+const habitRoutes = require('./routes/habitRoutes');
+const fitnessRoutes = require('./routes/fitnessRoutes');
+const upskillRoutes = require('./routes/upskillRoutes');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/expenses', expenseRoutes);
+app.use('/api/habits', habitRoutes);
+app.use('/api/fitness', fitnessRoutes);
+app.use('/api/upskill', upskillRoutes);
+
+const { errorHandler } = require('./middleware/errorMiddleware');
+app.use(errorHandler);
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);

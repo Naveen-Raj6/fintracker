@@ -31,6 +31,14 @@ const UserSchema = new mongoose.Schema({
     monthlyBudget: {
         type: Number,
         default: 0
+    },
+    xp: {
+        type: Number,
+        default: 0
+    },
+    level: {
+        type: Number,
+        default: 1
     }
 }, {
     timestamps: true

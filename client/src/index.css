@@ -3,5 +3,42 @@
 @tailwind utilities;
 
 body {
-    @apply bg-slate-900 text-slate-100;
+  @apply bg-slate-900 text-slate-100;
+}
+
+@keyframes bounce-up {
+  0% {
+    transform: translate(-50%, 20px);
+    opacity: 0;
+  }
+
+  20% {
+    transform: translate(-50%, -10px);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translate(-50%, -100px);
+    opacity: 0;
+  }
+}
+
+.animate-bounce-up {
+  animation: bounce-up 2s ease-out forwards;
+}
+
+@keyframes streak-glow {
+
+  0%,
+  100% {
+    filter: drop-shadow(0 0 5px rgba(249, 115, 22, 0.4));
+  }
+
+  50% {
+    filter: drop-shadow(0 0 15px rgba(249, 115, 22, 0.8));
+  }
+}
+
+.streak-glow {
+  animation: streak-glow 2s infinite ease-in-out;
 }
