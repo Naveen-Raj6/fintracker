@@ -1,4 +1,9 @@
-import { useSelector } from 'react-redux';
+import { useEffect } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
+import { getExpenses } from '../../expenses/store/expenseSlice';
+import { getHabits } from '../../habits/store/habitSlice';
+import { getFitnessLogs } from '../../fitness/store/fitnessSlice';
+import { getUpskillProjects } from '../../upskill/store/upskillSlice';
 import { 
     Wallet, 
     CheckCircle2, 
@@ -15,11 +20,19 @@ import {
 import { Link as RouterLink } from 'react-router-dom';
 
 const HomeDashboard = () => {
+    const dispatch = useDispatch();
     const { user } = useSelector((state) => state.auth);
     const { expenses } = useSelector((state) => state.expenses);
     const { habits } = useSelector((state) => state.habits);
     const { logs: fitnessLogs } = useSelector((state) => state.fitness);
     const { projects: upskillProjects } = useSelector((state) => state.upskill);
+
+    useEffect(() => {
+        dispatch(getExpenses());
+        dispatch(getHabits());
+        dispatch(getFitnessLogs());
+        dispatch(getUpskillProjects());
+    }, [dispatch]);
 
     const totalExpenses = expenses
         .filter(item => item.type === 'expense' || !item.type)

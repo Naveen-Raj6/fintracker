@@ -152,7 +152,8 @@ const FinanceTracker = () => {
   }, [expenses]);
 
   const { avgDailySpend, currentMonthTotal, currentWeekTotal, peakSpendingDay } = budgetMetrics;
-  const budgetHealthData = [{ name: 'Used', value: Math.min((totalExpenses / budgetLimit) * 100, 100) }];
+  const budgetHealthValue = currentMonthIncome > 0 ? Math.min((currentMonthExpenses / currentMonthIncome) * 100, 100) : 0;
+  const budgetHealthData = [{ name: 'Used', value: budgetHealthValue }];
 
   useEffect(() => {
     if (!user) navigate('/login');

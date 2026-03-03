@@ -225,7 +225,9 @@ const FinancialCharts = ({
                                 </RadialBarChart>
                             </ResponsiveContainer>
                             <div className="absolute top-2/3 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
-                                <p className="text-4xl font-black text-white italic tracking-tighter">{Math.round((totalExpenses / budgetLimit) * 100)}%</p>
+                                <p className="text-4xl font-black text-white italic tracking-tighter">
+                                    {currentMonthIncome > 0 ? Math.round((currentMonthTotal / currentMonthIncome) * 100) : 0}%
+                                </p>
                                 <p className="text-[9px] text-slate-500 font-black uppercase tracking-widest mt-1">{t('Limit Used')}</p>
                             </div>
                         </div>
