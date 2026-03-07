@@ -3,38 +3,39 @@ version: '3.8' # The version of Docker Compose syntax we are using
 services:
   # --- service 1: DATABASE ---
   mongodb:
-    image: mongo:latest #Grabs the official pre-built Mongo image from Docker Hub
+    image: mongo:latest # Grabs the official pre-built Mongo image from Docker Hub
     container_name: mongodb_container
     ports:
-      - "27017:27017" #[Your local machine (PC) Port] :[Container Internal Port]
+      - "27017:27017" # [Your local machine (PC) Port] : [Container Internal Port]
     volumes:
-      - tracker-data:/data/db #Persists data so it doesn't vanish on restart 
+      - tracker-data:/data/db # Persists data so it doesn't vanish on restart 
 
   # --- service 2: BACKEND ---
-
   backend:
-    build: ./server #Tells Docker to look for the 'Dockerfile' inside the /server folder
+    build: ./server # Tells Docker to look for the 'Dockerfile' inside the /server folder
     container_name: express_api
+    env_file: .env # Pulls variables (PORT, MONGO_URI, etc.) from your root .env file
     ports:
-      - "3000:3000" #[Your local machine (PC) Port] : [Container Internal Port]
-    environment:
-      - MONGO_URI=mongodb://mongodb:27017/multitracker # 'mongodb' matches the service name above
-      - JWT_SECRET="jwt_secret_key" # 'add you secret key'
+      - "3000:3000" # Maps Windows 3000 to Container 3000 (from .env)
+    volumes:
+      - ./server:/app # HOT RELOAD: Links your Windows 'server' folder to the container's '/app'
+      - /app/node_modules # Anonymous volume: Prevents Docker from using your Windows node_modules
     depends_on:
       - mongodb # Ensure the database starts BEFORE the backend starts
 
   # --- service 3: FRONTEND ---
-
   frontend:
-    build: ./client #Looks for the 'Dockerfile' inside the /client folder
+    build: ./client # Looks for the 'Dockerfile' inside the /client folder
     container_name: react_client
+    env_file: .env # Pulls variables (VITE_BACKEND_URL) from your root .env file
     ports:
-      - "5173:5173" #[Your local machine (PC) Port] : [Container Internal Port]
+      - "5173:5173" # [Your local machine (PC) Port] : [Container Internal Port]
+    volumes:
+      - ./client:/app # HOT RELOAD: Links your Windows 'client' folder to the container's '/app'
+      - /app/node_modules # Anonymous volume: Prevents Docker from using your Windows node_modules
     stdin_open: true # Required for some React versions to keep the terminal interactive
     depends_on:
-      - backend # Ensure the backend starts BEFORE the frontend  starts
-    environment:
-      - VITE_BACKEND_URL=http://backend:3000 # 'backend' matches the service name above
+      - backend # Ensure the backend starts BEFORE the frontend starts
 
 volumes:
   tracker-data: # This creates a named space on your Windows drive for your DB files

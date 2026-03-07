@@ -2,8 +2,9 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
+require('dotenv').config();
+console.log("MONGO_URI check:", process.env.MONGO_URI); // Debugging line   
 
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -13,11 +14,14 @@ const helmet = require('helmet');
 
 // Middleware
 app.use(helmet());
-app.use(cors());
+app.use(cors({
+    origin: process.env.CLIENT_URL || 'http://localhost:5173', // Allow your React app
+    credentials: true
+}));
 app.use(express.json());
 
 // Database Connection
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/expense_tracker';
+const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/multi_tracker_docker';
 
 mongoose.connect(MONGO_URI)
     .then(() => console.log('MongoDB Connected'))
