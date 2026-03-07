@@ -1,0 +1,40 @@
+version: '3.8' # The version of Docker Compose syntax we are using
+
+services:
+  # --- service 1: DATABASE ---
+  mongodb:
+    image: mongo:latest #Grabs the official pre-built Mongo image from Docker Hub
+    container_name: mongodb_container
+    ports:
+      - "27017:27017" #[Your local machine (PC) Port] :[Container Internal Port]
+    volumes:
+      - tracker-data:/data/db #Persists data so it doesn't vanish on restart 
+
+  # --- service 2: BACKEND ---
+
+  backend:
+    build: ./server #Tells Docker to look for the 'Dockerfile' inside the /server folder
+    container_name: express_api
+    ports:
+      - "3000:3000" #[Your local machine (PC) Port] : [Container Internal Port]
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/multitracker # 'mongodb' matches the service name above
+      - JWT_SECRET="jwt_secret_key" # 'add you secret key'
+    depends_on:
+      - mongodb # Ensure the database starts BEFORE the backend starts
+
+  # --- service 3: FRONTEND ---
+
+  frontend:
+    build: ./client #Looks for the 'Dockerfile' inside the /client folder
+    container_name: react_client
+    ports:
+      - "5173:5173" #[Your local machine (PC) Port] : [Container Internal Port]
+    stdin_open: true # Required for some React versions to keep the terminal interactive
+    depends_on:
+      - backend # Ensure the backend starts BEFORE the frontend  starts
+    environment:
+      - VITE_BACKEND_URL=http://backend:3000 # 'backend' matches the service name above
+
+volumes:
+  tracker-data: # This creates a named space on your Windows drive for your DB files

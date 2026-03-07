@@ -118,7 +118,7 @@ export const expenseSlice = createSlice({
                 state.isLoading = false;
                 state.isSuccess = true;
                 state.expenses = state.expenses.filter(
-                    (expense) => expense._id !== action.payload.id
+                    (expense) => expense._id !== (action.payload.id || action.payload)
                 );
             })
             .addCase(deleteExpense.rejected, (state, action) => {

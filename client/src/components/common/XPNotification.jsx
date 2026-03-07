@@ -15,7 +15,7 @@ const XPNotification = ({ xp, onComplete }) => {
 
     return (
         <div className="fixed bottom-20 left-1/2 transform -translate-x-1/2 z-50 pointer-events-none">
-            <div className="animate-bounce-up bg-accent text-slate-900 font-black px-4 py-2 rounded-full shadow-lg shadow-accent/50 flex items-center gap-2">
+            <div className="animate-bounce-up bg-blue-400 text-slate-900 font-black px-4 py-2 rounded-full shadow-lg shadow-blue-400/50 flex items-center gap-2">
                 <span className="text-lg">+{xp}</span>
                 <span className="text-xs uppercase tracking-widest">XP gained</span>
             </div>

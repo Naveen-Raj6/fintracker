@@ -5,6 +5,7 @@ const asyncHandler = require('../middleware/asyncHandler');
 // @route   GET /api/expenses
 // @access  Private
 const getExpenses = asyncHandler(async (req, res) => {
+
     const expenses = await Expense.find({ userId: req.user.id }).sort({ date: -1 });
     res.status(200).json(expenses);
 });
@@ -13,6 +14,7 @@ const getExpenses = asyncHandler(async (req, res) => {
 // @route   POST /api/expenses
 // @access  Private
 const addExpense = asyncHandler(async (req, res) => {
+    console.log("POST request received!", req.body);
     const { title, amount, category, date, description, type } = req.body;
 
     if (!title || !amount || !category) {

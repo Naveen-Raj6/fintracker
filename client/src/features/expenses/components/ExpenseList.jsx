@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { deleteExpense } from '../store/expenseSlice';
 import { useTranslation } from 'react-i18next';
-import { Trash2, Download, Edit2, ChevronUp, ChevronDown, HelpCircle, Utensils, Home, Car, Zap, Clapperboard, Stethoscope, User, TrendingUp, Landmark, Wallet, Banknote, Gem, Briefcase, Filter, ArrowUpDown, ChevronRight, ChevronLeft, Search } from 'lucide-react';
+import { Trash2, Download, Edit2, ChevronUp, ChevronDown, HelpCircle, Utensils, Home, Car, Zap, Clapperboard, Stethoscope, User, TrendingUp, Landmark, Wallet, Banknote, Gem, Briefcase, Filter, ArrowUpDown, ChevronRight, ChevronLeft, Search, Activity } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { CSVLink } from 'react-csv';
